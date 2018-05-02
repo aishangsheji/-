@@ -1,0 +1,293 @@
+聚类分析中的部分代码
+using System;
+using System.Data;
+using System.Configuration;
+using System.Web;
+using System.Web.Security;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.UI.WebControls.WebParts;
+using System.Web.UI.HtmlControls;
+using System.Collections;
+/// <summary>
+/// k_Implacation 的摘要说明
+/// </summary>
+public class k_Implacation
+{
+    static int total;      //样本数  
+    static Sample[] sample = new Sample[100];   //样本
+    static int k;         //最后类的个数；
+    int test = 0;          //比较次数
+    int times = 0;        //迭代次数
+    Zoom[] z0 = new Zoom[100];   //保存上一次的聚类中心
+    Zoom[] z = new Zoom[100];    //保存新的聚类中心
+    int[] type = new int[100];   //每个样本暂时的类
+	public k_Implacation(Sample[] temp,int num,int kk)   //num=total
+	{
+        temp.CopyTo(sample,0);
+        total = num;
+        k = kk;
+        for (int i = 0; i < k; i++)
+        {
+            z0[i] = new Zoom();
+            z[i] = new Zoom();
+        }
+        for (int i = 0; i < total; i++)
+        {
+            type[i] = 0;    //初始化样本类型
+        }
+        
+	}
+    //计算新的聚类中心
+    public Zoom newCenter(int m)
+    {
+        Zoom sum = new Zoom();           //引用已经定义好的对象是不可以的！  
+        int n = 0;
+        sum.property1 = 0;
+        sum.property2 = 0;
+        for (int i = 0; i < total; i++)
+        {
+            if (type[i] == m)
+            {
+                ++n;
+                sum.property1 = sample[i].op1 + sum.property1;
+                sum.property2 = sample[i].op2 + sum.property2;  
+            }
+        }
+        sum.property1 = sum.property1 / n;
+        sum.property2 = sum.property2 / n;
+        return sum;
+    }
+    //计算样本与平均值间的欧式距离
+    public double Distance(Sample ss, Zoom zz)
+    {
+        return (Math.Abs(ss.op1 - zz.property1) + Math.Abs(ss.op2 - zz.property2));
+    }
+    //进行迭代，对total个样本根据聚类中心进行分类
+    public void order()
+    {
+        int temp;
+        for (int i = 0; i < total; i++)
+        {
+            temp = 0;
+            for (int j = 0; j < k; j++)
+            {
+                if (Distance(sample[i], z[temp]) > Distance(sample[i], z[j]))
+                {
+                    temp = j;//第几个聚类
+                }
+            }
+            type[i] = temp;
+        }
+    }
+    //比较两个聚类中心的是否相等
+    public Boolean compare(Zoom z1, Zoom z2)            //单步运行，看最后运行的结果
+    {
+        if (z1.property1 == z2.property1 && z1.property2 == z2.property2)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+        public int[] main(string sam_temp)           //主代码
+        {
+            string[] s_no=new string[k];
+            s_no = sam_temp.Split(',');     //获得样本参数
+            int temp_s;
+           
+            for (int i = 0; i < k; i++)
+            {
+                temp_s = int.Parse(s_no[i]);
+                z[i].property1 = sample[temp_s].op1;
+                z[i].property2 = sample[temp_s].op2;             
+            }
+            while (test != k)              
+            {
+                test = 0;
+                order();
+                for (int i = 0; i < k; i++)
+                {
+                    z[i] = newCenter(i);
+                    if (compare(z[i], z0[i]))
+                    {
+                        test++;
+                    }
+                    z0[i] = z[i];
+                }
+                times++;
+            }
+            int[] result = new int[k];
+            for (int i = 0; i < k; i++)
+            {
+                for (int j = 0; j < total; j++)
+                {
+                    if (type[j] == i)
+                    {
+                        result[i]++;
+                    }
+                }
+            }
+            return result;
+        }
+}
+
+学生成绩录入中的部分代码：
+using System;
+using System.Data;
+using System.Configuration;
+using System.Web;
+using System.Web.Security;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.UI.WebControls.WebParts;
+using System.Web.UI.HtmlControls;
+using System.Data.SqlClient;
+using System.Data;
+public partial class _Default : System.Web.UI.Page 
+{
+    public static string ConnectString = "user id=sa;password=123;initial catalog=Student;Server=localhost";
+    string temp_test;
+    string temp_class;
+    protected void Button1_Click(object sender, EventArgs e)
+    {
+        string test_no=ddl_test.Text;
+             switch (test_no)
+        {
+            case "第一次":
+                temp_test = "TestPaper_One";
+                break;
+            case "第二次":
+                temp_test = "TestPaper_Two";
+                break;
+            case "第三次":
+                temp_test = "TestPaper_Three";
+                break;
+            case "第四次":
+                temp_test = "TestPaper_Four";
+                break;
+            default:
+                Response.Write(" <script> alert('请选择插入第几次考试成绩！') </script> ");
+                break;
+        }
+        string stu_class = ddl_class.Text;  //班级
+             switch (stu_class)
+        {
+            case "一年级一班":
+                temp_class = "0101";
+                break;
+            case "一年级二班":
+                temp_class = "0102";
+                break;
+            case "二年级一班":
+                temp_class = "0201";
+                break;
+            case "二年级二班":
+                temp_class = "0202";
+                break;
+            default:
+                Response.Write(" <script> alert('班级不能为空！') </script> ");
+                break;
+        }
+        if (txt_stuno.Text == "")     //学号
+        {
+            Response.Write(" <script> alert('学号不能为空！') </script> ");
+        }
+        if (txt_stuno.Text.Length != 10)
+        {
+            Response.Write(" <script> alert('请输入正确的学号！') </script> ");
+        }
+        if (txt_stuno.Text.Length == 10)//学号的格式正确
+        {
+            string no = judge_insert();
+            if (no.Length > 10)
+            {
+                insert_score();
+            }
+            else
+            {
+                Response.Write(" <script> alert('此学生的成绩已经录入！') </script> ");
+            }
+        }
+        txt_stuno.Text = "";
+        ddl_class.Text = "";
+        tb_chinese.Text = "";
+        tb_math.Text = "";
+       
+    }
+    public string judge_insert()
+    { 
+        
+        string temp;
+        string sql="select Stu_No from "+temp_test+" where Stu_No="+txt_stuno.Text;
+        SqlConnection myConnection = new SqlConnection(ConnectString);
+        SqlCommand myCommand = new SqlCommand(sql, myConnection);
+        myCommand.Connection.Open();
+        SqlDataReader Dr;
+        Dr = myCommand.ExecuteReader();//只取得一条记录
+       try
+        {
+            Dr.Read();
+            temp = Dr[0].ToString();
+            return temp;
+        }
+        catch (Exception err)
+        {
+            return err.ToString();
+        }
+        finally
+        {
+            Dr.Close();
+            myCommand.Connection.Close();
+        }
+    }
+    public void insert_score()
+    {
+              string sql_str;
+        sql_str = "insert into "+temp_test+" values(@no,@stu_class,@chinese,@math)";
+        SqlConnection myConnection = new SqlConnection(ConnectString);
+        SqlCommand myCommand = new SqlCommand();
+        if (tb_chinese.Text != "" && tb_math.Text != "")
+        {
+            try
+            {
+                myConnection.Open();
+                myCommand.Connection = myConnection;
+                myCommand.CommandText = sql_str;
+                myCommand.Parameters.Add("@no", SqlDbType.Char);
+                myCommand.Parameters["@no"].Value = txt_stuno.Text;
+                myCommand.Parameters.Add("@stu_class", SqlDbType.Char);
+                myCommand.Parameters["@stu_class"].Value = temp_class;
+                myCommand.Parameters.Add("@chinese", SqlDbType.Int);
+                myCommand.Parameters["@chinese"].Value = int.Parse(tb_chinese.Text);
+                myCommand.Parameters.Add("@math", SqlDbType.Int);
+                myCommand.Parameters["@math"].Value = int.Parse(tb_math.Text);
+                myCommand.ExecuteNonQuery();                                            //有错误
+                Response.Write(" <script> alert(学生成绩录入成功！') </script> ");
+            }
+            catch (Exception err)
+            {
+                throw err;
+            }
+            finally
+            {
+                myCommand.Dispose();
+                myConnection.Close();
+                myConnection.Dispose();
+            }
+        }
+        else
+        {
+            if (tb_chinese.Text == "")
+            {
+                Response.Write(" <script> alert('语文成绩不能为空！') </script> ");
+            }
+            if (tb_math.Text == "")
+            {
+                Response.Write(" <script> alert('数学成绩不能为空！') </script> ");
+            }
+        }
+      }
+}
